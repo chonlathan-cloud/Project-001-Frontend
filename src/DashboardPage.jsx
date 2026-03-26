@@ -5,23 +5,38 @@ import BudgetChart from './components/BudgetChart';
 import WagesChart from './components/WagesChart';
 import ValueChart from './components/ValueChart';
 import WorkPeriodChart from './components/WorkPeriodChart';
-import { fetchData } from './api';
+import { getDashboardData } from './api';
 import Loading from './components/Loading';
 
 const DashboardPage = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
-      const result = await fetchData('dashboard');
-      setData(result);
-      setLoading(false);
+      try {
+        setLoading(true);
+        setError('');
+        const result = await getDashboardData();
+        setData(result);
+      } catch (loadError) {
+        setError(loadError.message || 'Failed to load dashboard data.');
+      } finally {
+        setLoading(false);
+      }
     };
     loadData();
   }, []);
 
   if (loading) return <Loading />;
+  if (error) {
+    return (
+      <div className="card" style={{ backgroundColor: 'white', color: '#de5b52' }}>
+        {error}
+      </div>
+    );
+  }
 
   return (
     <>

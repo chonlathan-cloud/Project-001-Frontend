@@ -1,31 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import StatCard from './components/StatCard';
 import ShipmentChart from './components/ShipmentChart';
 import SalesChart from './components/SalesChart';
 import WagesChart from './components/WagesChart';
 import ValueChart from './components/ValueChart';
 import WorkPeriodChart from './components/WorkPeriodChart';
-import { fetchData } from './api';
+import { getProjectDetailData } from './api';
 import Loading from './components/Loading';
 
 const ProjectDetailPage = () => {
+  const { projectId: routeProjectId } = useParams();
   const location = useLocation();
   const passedProjectName = location.state?.projectName;
+  const stateProjectId = location.state?.projectId;
+  const projectId = routeProjectId || stateProjectId;
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
-      const result = await fetchData('project_detail', passedProjectName);
-      setData(result);
-      setLoading(false);
+      if (!projectId) {
+        setError('Project id is missing. Please open this page from the project list.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError('');
+        const result = await getProjectDetailData(projectId);
+        setData(result);
+      } catch (loadError) {
+        setError(loadError.message || 'Failed to load project detail.');
+      } finally {
+        setLoading(false);
+      }
     };
     loadData();
-  }, [passedProjectName]);
+  }, [projectId]);
 
   if (loading) return <Loading />;
+  if (error) {
+    return (
+      <div className="card" style={{ backgroundColor: 'white', color: '#de5b52' }}>
+        {error}
+      </div>
+    );
+  }
 
   return (
     <>

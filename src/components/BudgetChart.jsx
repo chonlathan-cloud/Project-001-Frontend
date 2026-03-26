@@ -1,8 +1,14 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { compactNumber } from '../api';
 
 const BudgetChart = ({ data }) => {
   const chartData = data || [];
+  const totalValue = chartData.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
+  const primaryItem = chartData[0];
+  const primaryPercent = totalValue > 0 && primaryItem
+    ? Math.round(((Number(primaryItem.value) || 0) / totalValue) * 100)
+    : null;
 
   return (
     <div className="card" style={{ height: '400px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -16,8 +22,7 @@ const BudgetChart = ({ data }) => {
         </div>
         
         <div style={{ flex: 1, position: 'relative' }}>
-          {/* Custom Callout Balloon */}
-          {chartData.length > 0 && (
+          {chartData.length > 0 && primaryItem && (
             <div style={{
               position: 'absolute',
               top: '20%',
@@ -31,8 +36,8 @@ const BudgetChart = ({ data }) => {
               textAlign: 'center',
               border: '1px solid #eee'
             }}>
-              <p style={{ color: '#ccc', fontWeight: 'bold' }}>7%</p>
-              <p style={{ fontWeight: 'bold' }}>$400</p>
+              <p style={{ color: '#ccc', fontWeight: 'bold' }}>{primaryPercent}%</p>
+              <p style={{ fontWeight: 'bold' }}>${compactNumber.format(primaryItem.value || 0)}</p>
             </div>
           )}
 
@@ -65,9 +70,9 @@ const BudgetChart = ({ data }) => {
               transform: 'translate(-50%, -50%)',
               textAlign: 'center'
             }}>
-              <p style={{ fontSize: '12px', color: '#999', fontWeight: '500' }}>Total for month</p>
+              <p style={{ fontSize: '12px', color: '#999', fontWeight: '500' }}>Total mapped value</p>
               <p style={{ fontSize: '20px', fontWeight: 'bold' }}>
-                $5,950<span style={{ opacity: 0.3 }}>.00</span>
+                ${compactNumber.format(totalValue)}
               </p>
             </div>
           )}

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, ArrowUpDown, SlidersHorizontal, RotateCw, ChevronDown, Plus, Pencil, CheckCircle2, AlertCircle, MoreHorizontal, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { fetchData } from './api';
+import { getProjectsData } from './api';
 import Loading from './components/Loading';
 import CircularProgress from './components/CircularProgress';
 import SemiCircleGauge from './components/SemiCircleGauge';
@@ -28,9 +28,14 @@ const FilterButton = ({ icon: Icon, label, secondaryIcon: SecIcon }) => (
 );
 
 const ProjectCard = ({ project, index, onClick, onEditName }) => {
-  const { name, spent, total, status } = project;
+  const { name, spent, total, status, progressPercent } = project;
   const left = total - spent;
-  const isOnTrack = status === 'on track';
+  const normalizedStatus = String(status || '').toLowerCase();
+  const isOnTrack =
+    normalizedStatus.includes('active') ||
+    normalizedStatus.includes('track') ||
+    normalizedStatus.includes('complete') ||
+    normalizedStatus.includes('approved');
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(name);
@@ -62,7 +67,7 @@ const ProjectCard = ({ project, index, onClick, onEditName }) => {
   };
 
   return (
-    <motion.div 
+    <Motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
@@ -101,7 +106,7 @@ const ProjectCard = ({ project, index, onClick, onEditName }) => {
           )}
         </div>
         
-        {!isEditing && (
+        {!isEditing && onEditName && (
           <div 
             onClick={handleEditClick}
             style={{ 
@@ -126,7 +131,7 @@ const ProjectCard = ({ project, index, onClick, onEditName }) => {
                 ${left.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
               </span>
               <span style={{ fontSize: '12px', color: '#888' }}>
-                /${total.toLocaleString()}
+                /${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
               </span>
             </div>
           </div>
@@ -141,9 +146,12 @@ const ProjectCard = ({ project, index, onClick, onEditName }) => {
             {isOnTrack ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
             {status}
           </div>
+          <div style={{ fontSize: '12px', color: '#888' }}>
+            Progress {progressPercent.toFixed(1)}%
+          </div>
         </div>
       </div>
-    </motion.div>
+    </Motion.div>
   );
 };
 
@@ -176,33 +184,32 @@ const ProjectPage = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
-      const result = await fetchData('projects');
-      setProjects(result);
-      setLoading(false);
+      try {
+        setLoading(true);
+        setError('');
+        const result = await getProjectsData();
+        setProjects(result);
+      } catch (loadError) {
+        setError(loadError.message || 'Failed to load projects.');
+      } finally {
+        setLoading(false);
+      }
     };
     loadData();
   }, []);
 
-  const handleEditName = (index, newName) => {
-    const updated = [...projects];
-    updated[index].name = newName;
-    setProjects(updated);
-  };
-
-  const handleAddProject = () => {
-    const newProject = {
-      name: 'New Project',
-      spent: 0,
-      total: 1000,
-      status: 'on track'
-    };
-    setProjects([newProject, ...projects]);
-  };
-
   if (loading) return <Loading />;
+  if (error) {
+    return (
+      <div className="card" style={{ backgroundColor: 'white', color: '#de5b52' }}>
+        {error}
+      </div>
+    );
+  }
 
   const totalSpent = projects.reduce((acc, p) => acc + p.spent, 0);
   const totalBudget = projects.reduce((acc, p) => acc + p.total, 0);
@@ -219,13 +226,16 @@ const ProjectPage = () => {
             <p style={{ color: '#888', fontSize: '14px' }}>Create and track your projects</p>
           </div>
           <button 
-            onClick={handleAddProject}
+            type="button"
+            disabled
             style={{ 
-              backgroundColor: '#8a76fa', color: 'white', padding: '12px 24px', 
+              backgroundColor: '#d9d2fb', color: '#6d5bc9', padding: '12px 24px', 
               borderRadius: '24px', display: 'flex', alignItems: 'center', gap: '8px',
-              fontSize: '14px', fontWeight: '600', border: 'none', cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(138, 118, 250, 0.3)'
+              fontSize: '14px', fontWeight: '600', border: 'none', cursor: 'not-allowed',
+              boxShadow: 'none',
+              opacity: 0.75
             }}
+            title="Create project flow is not connected in phase 1."
           >
             <Plus size={18} />
             Add new project
@@ -264,23 +274,28 @@ const ProjectPage = () => {
         </div>
 
         {/* Project Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-          {projects.map((p, i) => (
-            <ProjectCard 
-              key={i} 
-              project={p} 
-              index={i} 
-              onEditName={(newName) => handleEditName(i, newName)}
-              onClick={() => navigate('/project/detail', { state: { projectName: p.name } })} 
-            />
-          ))}
-        </div>
+        {projects.length === 0 ? (
+          <div className="card" style={{ backgroundColor: 'white', color: '#666' }}>
+            No projects returned from backend yet.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+            {projects.map((p, i) => (
+              <ProjectCard 
+                key={p.id || i} 
+                project={p} 
+                index={i} 
+                onClick={() => navigate(`/project/detail/${p.id}`, { state: { projectName: p.name, projectId: p.id } })} 
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Right Sidebar */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {/* Total Budget Card */}
-        <motion.div 
+        <Motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           className="card" 
@@ -313,10 +328,10 @@ const ProjectPage = () => {
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <SemiCircleGauge value={totalSpent} max={totalBudget} color="#8a76fa" bgColor="#f4f2ff" size={260} />
           </div>
-        </motion.div>
+        </Motion.div>
 
         {/* Most Expenses List */}
-        <motion.div 
+        <Motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
@@ -345,12 +360,10 @@ const ProjectPage = () => {
               )
             })}
           </div>
-        </motion.div>
+        </Motion.div>
       </div>
     </div>
   );
 };
 
 export default ProjectPage;
-
-

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { compactNumber } from '../api';
 
 const ShipmentChart = ({ data }) => {
   const [activeFilter, setActiveFilter] = useState('Year');
@@ -37,6 +38,11 @@ const ShipmentChart = ({ data }) => {
   };
 
   const displayData = data && data.length > 0 ? data : getDummyData();
+  const dataMax = displayData.reduce(
+    (maxValue, item) => Math.max(maxValue, item.green || 0, item.red || 0),
+    0
+  );
+  const yAxisMax = dataMax > 0 ? Math.ceil(dataMax * 1.15) : 250;
 
   return (
     <div className="card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
@@ -79,8 +85,8 @@ const ShipmentChart = ({ data }) => {
             <YAxis 
               axisLine={false} 
               tickLine={false} 
-              ticks={[0, 50, 100, 150, 200, 250]}
-              domain={[0, 250]}
+              domain={[0, yAxisMax]}
+              tickFormatter={(value) => compactNumber.format(value)}
               tick={{ fontSize: 12, fontWeight: 600, fill: '#333' }}
             />
             <Tooltip cursor={{ fill: 'transparent' }} />

@@ -19,6 +19,7 @@ function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/project" element={<ProjectPage />} />
           <Route path="/project/detail" element={<ProjectDetailPage />} />
+          <Route path="/project/detail/:projectId" element={<ProjectDetailPage />} />
           <Route path="/insights" element={<InsightsPage />} />
           <Route path="/input" element={<InputPage />} />
           <Route path="/chat-ai" element={<ChatAIPage />} />

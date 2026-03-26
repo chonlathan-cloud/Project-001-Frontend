@@ -1,9 +1,18 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { compactNumber } from '../api';
 
 const SalesChart = ({ data = [] }) => {
   const isEmpty = !data || data.length === 0;
   const displayData = isEmpty ? [] : data;
+  const yAxisMax = isEmpty
+    ? 5000
+    : Math.ceil(
+        displayData.reduce(
+          (maxValue, item) => Math.max(maxValue, item.sales || 0, item.target || 0),
+          0
+        ) * 1.15
+      );
   return (
     <div className="card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
       <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
@@ -39,9 +48,8 @@ const SalesChart = ({ data = [] }) => {
             <YAxis 
               axisLine={false} 
               tickLine={false} 
-              ticks={[0, 1000, 2000, 3000, 4000, 5000]}
-              tickFormatter={(value) => `${value / 1000}k`}
-              domain={[0, 5000]}
+              tickFormatter={(value) => compactNumber.format(value)}
+              domain={[0, yAxisMax || 5000]}
               tick={{ fontSize: 12, fontWeight: 600, fill: '#333' }}
             />
             <Tooltip />
