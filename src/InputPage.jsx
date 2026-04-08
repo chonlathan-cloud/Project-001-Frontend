@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Loading from './components/Loading';
+import ConstructionAnimation from './components/ConstructionAnimation';
 
 const InputField = ({ label, placeholder, type = 'text', style = {} }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', ...style }}>
@@ -10,44 +12,54 @@ const InputField = ({ label, placeholder, type = 'text', style = {} }) => (
       placeholder={placeholder}
       style={{
         width: '100%',
-        padding: '8px 16px',
+        padding: '12px 16px',
         borderRadius: '12px',
         backgroundColor: '#e6decb',
         border: '1px solid #bba684',
         fontSize: '14px',
         outline: 'none',
         textAlign: 'center',
-        color: '#333'
+        color: '#333',
+        transition: 'all 0.3s ease'
       }}
     />
   </div>
 );
 
-const SelectField = ({ label, placeholder, style = {} }) => (
+const SelectField = ({ label, placeholder, options = [], style = {}, value, onChange }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', ...style }}>
     {label && <label style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>{label}</label>}
-    <select 
-      style={{
-        width: '100%',
-        padding: '8px 16px',
-        borderRadius: '12px',
-        backgroundColor: '#e6decb',
-        border: '1px solid #bba684',
-        fontSize: '14px',
-        outline: 'none',
-        textAlign: 'center',
-        appearance: 'none',
-        color: '#666',
-        cursor: 'pointer'
-      }}
-    >
-      <option value="">{placeholder}</option>
-    </select>
+    <div style={{ position: 'relative' }}>
+      <select 
+        value={value}
+        onChange={onChange}
+        style={{
+          width: '100%',
+          padding: '12px 16px',
+          borderRadius: '12px',
+          backgroundColor: '#e6decb',
+          border: '1px solid #bba684',
+          fontSize: '14px',
+          outline: 'none',
+          textAlign: 'center',
+          appearance: 'none',
+          color: value ? '#333' : '#666',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease'
+        }}
+      >
+        <option value="">{placeholder}</option>
+        {options.map((opt, idx) => (
+          <option key={idx} value={opt}>{opt}</option>
+        ))}
+      </select>
+    </div>
   </div>
 );
 
 const InputPage = () => {
   const [loading, setLoading] = useState(true);
+  const [selectedType, setSelectedType] = useState('');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -58,25 +70,47 @@ const InputPage = () => {
 
   if (loading) return <Loading />;
 
-  return (
-    <>
-      <h1 style={{ fontSize: '32px', marginBottom: '24px' }}>Input</h1>
+  const isIncome = selectedType === 'รายรับ';
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+  return (
+    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
+      <h1 style={{ fontSize: '32px', marginBottom: '32px', fontWeight: '700', color: '#1a1a1a' }}>Input</h1>
+
+      <motion.div 
+        layout
+        style={{ 
+          display: 'flex', 
+          flexDirection: isIncome ? 'row-reverse' : 'row', 
+          gap: '32px', 
+          alignItems: 'start',
+          transition: 'flex-direction 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
+      >
         
         {/* Left Side: Form Container */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
+        <motion.div 
+          layout
+          style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}
+        >
           {/* Main Form Card */}
           <div className="card" style={{ 
             backgroundColor: 'white', 
             padding: '32px 24px', 
             display: 'flex', 
             flexDirection: 'column', 
-            gap: '20px' 
+            gap: '20px',
+            borderRadius: '24px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
           }}>
+            <SelectField 
+              label="รายจ่าย / รายรับ" 
+              placeholder="เลือกรายการที่ทำ" 
+              options={['รายจ่าย', 'รายรับ']}
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              style={{ width: '60%' }} 
+            />
             
-            <SelectField label="รายจ่าย / รายรับ" placeholder="เลือกรายการที่ทำ" style={{ width: '60%' }} />
             <SelectField label="โครงการ" placeholder="กรุณาเลือกโครงการ" style={{ width: '60%' }} />
             <InputField label="ชื่อ - นามสกุล" placeholder="กรุณากรอกชื่อ-นามสกุล" style={{ width: '60%' }} />
             
@@ -122,7 +156,6 @@ const InputPage = () => {
                 <ArrowUp size={16} />
               </div>
             </div>
-
           </div>
 
           {/* Submit Button */}
@@ -130,26 +163,41 @@ const InputPage = () => {
             <button style={{
               backgroundColor: '#c9a15c',
               color: 'black',
-              border: '1px solid #8c6e3d',
+              border: 'none',
               borderRadius: '12px',
               padding: '12px 48px',
               fontSize: '20px',
               fontWeight: '700',
               cursor: 'pointer',
               width: '120px',
-              boxShadow: 'var(--shadow-sm)'
+              boxShadow: '0 4px 15px rgba(201, 161, 92, 0.3)'
             }}>
               ส่ง
             </button>
           </div>
+        </motion.div>
 
-        </div>
-
-        {/* Right Side: Empty Card */}
-        <div className="card" style={{ backgroundColor: 'white', minHeight: '800px' }}></div>
+        {/* Right Side: Construction Animation */}
+        <motion.div 
+          layout
+          style={{ 
+            flex: 1, 
+            backgroundColor: '#f9f6f0', 
+            minHeight: '800px',
+            borderRadius: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+            border: '1px solid #ede4d3'
+          }}
+        >
+          <ConstructionAnimation />
+        </motion.div>
         
-      </div>
-    </>
+      </motion.div>
+    </div>
   );
 };
 

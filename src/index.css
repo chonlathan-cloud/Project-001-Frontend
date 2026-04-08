@@ -1,15 +1,20 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 :root {
-  --bg-primary: #f7f7f2;
-  --sidebar-bg: #1f1f1f;
-  --accent-gold: #c9a15c;
-  --accent-gold-light: rgba(201, 161, 92, 0.1);
+  --bg-primary: #f7f4ef;
+  --sidebar-bg: #3d403a;
+  --accent-gold: #c4a470;
+  --accent-gold-light: rgba(196, 164, 112, 0.1);
   --text-main: #1a1a1a;
   --text-muted: #666666;
-  --text-sidebar: #b3b3b3;
+  --text-sidebar: #b0b4ab;
   --card-bg: #ffffff;
   --border-color: #efefef;
+
+  --card-bg-new: #fcf9f4;
+  --card-bg-pending: #fbf4e9;
+  --card-bg-approved: #666b60;
+  --table-row-highlight: #f2ece1;
 
   --chart-green: #27a57a;
   --chart-red: #cc3333;
