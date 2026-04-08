@@ -43,14 +43,68 @@ const withColor = (items) =>
 const flattenBoqTree = (nodes = []) =>
   nodes.flatMap((node) => [node, ...flattenBoqTree(node.children || [])]);
 
+const toBoqChartNodes = (nodes = []) => {
+  const rootNodes = Array.isArray(nodes) ? nodes : [];
+  const summaryNodes = rootNodes.filter(
+    (node) => toNumber(node.total_budget) > 0 && node.row_type !== 'GRAND_TOTAL'
+  );
+
+  if (summaryNodes.length > 0) {
+    return summaryNodes;
+  }
+
+  return flattenBoqTree(rootNodes).filter(
+    (node) =>
+      toNumber(node.total_budget) > 0 &&
+      node.row_type === 'LINE_ITEM' &&
+      (!node.children || node.children.length === 0)
+  );
+};
+
+const toProjectCardItem = (project) => {
+  const id = project.project_id || project.id || '';
+  const total = toNumber(project.total_budget ?? project.contingency_budget);
+  const progressPercent = toNumber(project.progress_percent);
+
+  return {
+    id,
+    name: project.name || 'Untitled Project',
+    projectType: project.project_type || '-',
+    status: normalizeStatusLabel(project.status),
+    rawStatus: project.status || '-',
+    progressPercent,
+    spent: toNumber(project.spent, total * (progressPercent / 100)),
+    total,
+    overheadPercent: toNumber(project.overhead_percent),
+    profitPercent: toNumber(project.profit_percent),
+    vatPercent: toNumber(project.vat_percent),
+    contingencyBudget: toNumber(project.contingency_budget, total),
+  };
+};
+
 async function apiRequest(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
+  const { timeoutMs = 30000, headers, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(headers || {}),
+      },
+      signal: controller.signal,
+      ...fetchOptions,
+    });
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error?.name === 'AbortError') {
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds.`);
+    }
+    throw error;
+  }
+  clearTimeout(timeoutId);
 
   let payload = null;
   try {
@@ -140,19 +194,70 @@ export async function getProjectsData() {
   const data = await apiRequest('/api/v1/projects');
   const projects = Array.isArray(data) ? data : [];
 
-  return projects.map((project) => {
-    const id = project.project_id || project.id || '';
-    const total = toNumber(project.total_budget);
-    const progressPercent = toNumber(project.progress_percent);
+  return projects.map(toProjectCardItem);
+}
 
-    return {
-      id,
-      name: project.name || 'Untitled Project',
-      status: normalizeStatusLabel(project.status),
-      progressPercent,
-      spent: toNumber(project.spent, total * (progressPercent / 100)),
-      total,
-    };
+export async function createProject(payload) {
+  const project = await apiRequest('/api/v1/projects', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  return toProjectCardItem(project);
+}
+
+export async function updateProject(projectId, payload) {
+  const project = await apiRequest(`/api/v1/projects/${projectId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+
+  return toProjectCardItem(project);
+}
+
+export async function syncProjectBoq(payload) {
+  return apiRequest('/api/v1/projects/boq/sync', {
+    method: 'POST',
+    timeoutMs: 195000,
+    body: JSON.stringify({
+      project_id: payload.projectId,
+      boq_type: payload.boqType,
+      sheet_url: payload.sheetUrl,
+      sheet_name: payload.sheetName,
+    }),
+  });
+}
+
+export async function getProjectBoqTabs(payload) {
+  return apiRequest('/api/v1/projects/boq/tabs', {
+    method: 'POST',
+    timeoutMs: 45000,
+    body: JSON.stringify({
+      sheet_url: payload.sheetUrl,
+    }),
+  });
+}
+
+export async function syncProjectBoqBatch(payload) {
+  const selectedSheetNames = Array.isArray(payload.sheetNames)
+    ? payload.sheetNames.filter(Boolean)
+    : [];
+
+  return apiRequest('/api/v1/projects/boq/sync-batch', {
+    method: 'POST',
+    timeoutMs: 30000,
+    body: JSON.stringify({
+      project_id: payload.projectId,
+      boq_type: payload.boqType,
+      sheet_url: payload.sheetUrl,
+      sheet_names: selectedSheetNames,
+    }),
+  });
+}
+
+export async function getProjectBoqSyncJob(jobId) {
+  return apiRequest(`/api/v1/projects/boq/sync-jobs/${jobId}`, {
+    timeoutMs: 30000,
   });
 }
 
@@ -161,8 +266,8 @@ export async function getProjectDetailData(projectId) {
 
   const boqResponse = await apiRequest(`/api/v1/projects/${projectId}/boq`).catch(() => null);
   const boqTree = Array.isArray(boqResponse?.boq_tree) ? boqResponse.boq_tree : [];
-  const flatBoqItems = flattenBoqTree(boqTree);
-  const topItems = flatBoqItems
+  const chartNodes = toBoqChartNodes(boqTree);
+  const topItems = chartNodes
     .filter((item) => toNumber(item.total_budget) > 0)
     .sort((left, right) => toNumber(right.total_budget) - toNumber(left.total_budget))
     .slice(0, 5);
