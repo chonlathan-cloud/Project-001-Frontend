@@ -11,6 +11,21 @@ const compactNumber = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 1,
 });
 
+const INSIGHTS_MOCK_DATA = {
+  filters: {
+    users: ['ผู้ทำรายการทั้งหมด', 'Admin', 'Site Engineer'],
+    months: ['ม.ค.', 'ก.พ.', 'มี.ค.'],
+    years: ['2026', '2025'],
+  },
+  summary: {
+    new: { count: 0, amount: '0' },
+    pending: { count: 0, amount: '0' },
+    approved: { count: 0, amount: '0' },
+  },
+  tableName: 'รายการทั้งหมด',
+  tableData: [],
+};
+
 const toNumber = (value, fallback = 0) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
@@ -45,9 +60,7 @@ const flattenBoqTree = (nodes = []) =>
 
 const toBoqChartNodes = (nodes = []) => {
   const rootNodes = Array.isArray(nodes) ? nodes : [];
-  const summaryNodes = rootNodes.filter(
-    (node) => toNumber(node.total_budget) > 0 && node.row_type !== 'GRAND_TOTAL'
-  );
+  const summaryNodes = rootNodes.filter((node) => toNumber(node.total_budget) > 0);
 
   if (summaryNodes.length > 0) {
     return summaryNodes;
@@ -56,8 +69,7 @@ const toBoqChartNodes = (nodes = []) => {
   return flattenBoqTree(rootNodes).filter(
     (node) =>
       toNumber(node.total_budget) > 0 &&
-      node.row_type === 'LINE_ITEM' &&
-      (!node.children || node.children.length === 0)
+      (!Array.isArray(node.children) || node.children.length === 0)
   );
 };
 
@@ -86,12 +98,13 @@ async function apiRequest(path, options = {}) {
   const { timeoutMs = 30000, headers, ...fetchOptions } = options;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const isFormData = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData;
 
   let response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       headers: {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...(headers || {}),
       },
       signal: controller.signal,
@@ -321,6 +334,30 @@ export async function getProjectDetailData(projectId) {
   };
 }
 
+export async function getInputProjectOptions() {
+  const data = await apiRequest('/api/v1/input/projects');
+  return Array.isArray(data) ? data : [];
+}
+
+export async function extractInputReceipt(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return apiRequest('/api/v1/input/receipt-extract', {
+    method: 'POST',
+    headers: {},
+    body: formData,
+    timeoutMs: 45000,
+  });
+}
+
+export async function submitInputRequest(payload) {
+  return apiRequest('/api/v1/input/requests', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function fetchData(type, param = null) {
   switch (type) {
     case 'dashboard':
@@ -330,70 +367,13 @@ export async function fetchData(type, param = null) {
     case 'project_detail':
       return getProjectDetailData(param);
     case 'insights':
-      return {
-        filters: ['ผู้ทำรายการทั้งหมด', 'หมวดหมู่ทั้งหมด', 'เดือน', 'ปี'],
-      };
+      return INSIGHTS_MOCK_DATA;
     case 'settings': {
       const data = await apiRequest('/api/v1/settings/subcontractors').catch(() => []);
       return Array.isArray(data) ? data : [];
     }
     default:
       return null;
-
-      
-// Helper for temporary mock data until backend is ready
-const getMockData = (type) => {
-  const mocks = {
-    dashboard: { total_projects: 0, total_expenses: 0, projects: [] },
-    projects: [],
-    insights: { data: [] },
-    settings: {}
-  };
-  return mocks[type] || [];
-};
-
-export const fetchData = async (type, param = null) => {
-  try {
-    let url = `${API_BASE_URL}/api/${type}`;
-    if (param) url += `?param=${encodeURIComponent(param)}`;
-
-    const response = await fetch(url);
-    
-    // Check if response is JSON to prevent crashes when backend is not ready
-    const contentType = response.headers.get("content-type");
-    if (!response.ok || !contentType || !contentType.includes("application/json")) {
-      console.warn(`Backend not ready or invalid response for ${type}. Returning mock data.`);
-      return getMockData(type);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('API Error:', error);
-    return getMockData(type);
-  }
-};
-
-export const postData = async (type, data) => {
-  try {
-    const url = `${API_BASE_URL}/api/${type}`;
-    const options = {
-      method: 'POST',
-      headers: data instanceof FormData ? {} : { 'Content-Type': 'application/json' },
-      body: data instanceof FormData ? data : JSON.stringify(data),
-    };
-
-    const response = await fetch(url, options);
-    const contentType = response.headers.get("content-type");
-    
-    if (!response.ok || !contentType || !contentType.includes("application/json")) {
-      console.warn(`Backend not ready for POST ${type}. Simulating success.`);
-      return { success: true, message: 'Mock success' };
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('API Post Error:', error);
-    return { success: true, message: 'Mock success' };
   }
 }
 
