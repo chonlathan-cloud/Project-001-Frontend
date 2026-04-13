@@ -9,6 +9,7 @@ const ProjectPage = lazy(() => import('./ProjectPage'))
 const ProjectDetailPage = lazy(() => import('./ProjectDetailPage'))
 const InsightsPage = lazy(() => import('./InsightsPage'))
 const InputPage = lazy(() => import('./InputPage'))
+const ApprovalPage = lazy(() => import('./ApprovalPage'))
 const ChatAIPage = lazy(() => import('./ChatAIPage'))
 const SettingPage = lazy(() => import('./SettingPage'))
 
@@ -25,6 +26,7 @@ function App() {
             <Route path="/project/detail/:projectId" element={<ProjectDetailPage />} />
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/input" element={<InputPage />} />
+            <Route path="/approval" element={<ApprovalPage />} />
             <Route path="/chat-ai" element={<ChatAIPage />} />
             <Route path="/setting" element={<SettingPage />} />
             <Route path="*" element={<DashboardPage />} />

@@ -1,6 +1,14 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FolderKanban, BarChart3, PenSquare, MessageSquare, Settings } from 'lucide-react';
+import {
+  LayoutDashboard,
+  FolderKanban,
+  BarChart3,
+  PenSquare,
+  BadgeCheck,
+  MessageSquare,
+  Settings,
+} from 'lucide-react';
 import Logo from './Logo';
 
 const Sidebar = () => {
@@ -9,6 +17,7 @@ const Sidebar = () => {
     { name: 'Project', icon: FolderKanban, path: '/project' },
     { name: 'Insights', icon: BarChart3, path: '/insights' },
     { name: 'Input', icon: PenSquare, path: '/input' },
+    { name: 'Approval', icon: BadgeCheck, path: '/approval' },
     { name: 'Chat AI', icon: MessageSquare, path: '/chat-ai' },
     { name: 'Setting', icon: Settings, path: '/setting' },
   ];

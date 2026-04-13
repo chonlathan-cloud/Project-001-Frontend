@@ -358,6 +358,47 @@ export async function submitInputRequest(payload) {
   });
 }
 
+export async function getAdminInputRequests(filters = {}) {
+  const searchParams = new URLSearchParams();
+
+  if (filters.status) searchParams.set('status', filters.status);
+  if (filters.entryType) searchParams.set('entry_type', filters.entryType);
+  if (filters.projectId) searchParams.set('project_id', filters.projectId);
+
+  const query = searchParams.toString();
+  const path = query ? `/api/v1/input/admin/requests?${query}` : '/api/v1/input/admin/requests';
+  const data = await apiRequest(path);
+  return Array.isArray(data) ? data : [];
+}
+
+export async function updateAdminInputRequest(requestId, payload) {
+  return apiRequest(`/api/v1/input/admin/requests/${requestId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function approveAdminInputRequest(requestId, payload = {}) {
+  return apiRequest(`/api/v1/input/admin/requests/${requestId}/approve`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function rejectAdminInputRequest(requestId, payload) {
+  return apiRequest(`/api/v1/input/admin/requests/${requestId}/reject`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function markPaidAdminInputRequest(requestId, payload = {}) {
+  return apiRequest(`/api/v1/input/admin/requests/${requestId}/mark-paid`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function fetchData(type, param = null) {
   switch (type) {
     case 'dashboard':

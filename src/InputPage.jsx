@@ -34,9 +34,12 @@ const initialFormState = {
   requesterName: '',
   phone: '',
   requestDate: new Date().toISOString().slice(0, 10),
+  documentDate: '',
   workType: '',
   requestType: '',
   note: '',
+  vendorName: '',
+  receiptNo: '',
   bankName: '',
   accountNo: '',
   accountName: '',
@@ -139,6 +142,8 @@ const StatusBanner = ({ tone, text }) => {
   const palette =
     tone === 'error'
       ? { bg: '#fde8e8', border: '#de5b52', color: '#912018', Icon: TriangleAlert }
+      : tone === 'warning'
+        ? { bg: '#fff4de', border: '#c98c1c', color: '#8b5a00', Icon: TriangleAlert }
       : { bg: '#e6f5ec', border: '#27a57a', color: '#13654b', Icon: CheckCircle2 };
   const Icon = palette.Icon;
 
@@ -238,14 +243,18 @@ const InputPage = () => {
       setExtractData(extracted);
       setForm((current) => ({
         ...current,
-        amount:
-          current.amount || extracted.total_amount == null
-            ? current.amount
+        amount: current.amount
+          ? current.amount
+          : extracted.total_amount == null
+            ? ''
             : String(extracted.total_amount),
+        documentDate: current.documentDate || extracted.document_date || '',
         requestType: current.requestType || extracted.suggested_request_type || '',
+        vendorName: current.vendorName || extracted.vendor_name || '',
+        receiptNo: current.receiptNo || extracted.receipt_no || '',
         note:
           current.note ||
-          [extracted.vendor_name, extracted.document_date]
+          [extracted.vendor_name, extracted.receipt_no, extracted.document_date]
             .filter(Boolean)
             .join(' | '),
       }));
@@ -288,9 +297,12 @@ const InputPage = () => {
         requester_name: form.requesterName.trim(),
         phone: form.phone.trim() || null,
         request_date: form.requestDate,
+        document_date: form.documentDate || form.requestDate,
         work_type: form.workType || null,
         request_type: form.requestType || null,
         note: form.note.trim() || null,
+        vendor_name: form.vendorName.trim() || null,
+        receipt_no: form.receiptNo.trim() || null,
         bank_account: {
           bank_name: form.bankName.trim() || null,
           account_no: form.accountNo.trim() || null,
@@ -422,6 +434,21 @@ const InputPage = () => {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <InputField
+                  label="เลขที่ใบเสร็จ"
+                  placeholder="กรุณากรอกเลขที่ใบเสร็จ"
+                  value={form.receiptNo}
+                  onChange={handleFieldChange('receiptNo')}
+                />
+                <InputField
+                  label="วันที่เอกสาร"
+                  type="date"
+                  value={form.documentDate}
+                  onChange={handleFieldChange('documentDate')}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <SelectField
                   label="ประเภทงาน"
                   placeholder="กรุณาเลือก"
@@ -437,6 +464,14 @@ const InputPage = () => {
                   onChange={handleFieldChange('requestType')}
                 />
               </div>
+
+              <InputField
+                label="ผู้ขาย / ร้านค้า"
+                placeholder="กรุณากรอกชื่อร้านหรือผู้ขาย"
+                value={form.vendorName}
+                onChange={handleFieldChange('vendorName')}
+                style={{ width: '60%' }}
+              />
 
               <TextAreaField
                 label="อื่น ๆ"
@@ -573,6 +608,12 @@ const InputPage = () => {
                     tone="success"
                     text={`สร้างคำขอสำเร็จ สถานะ ${submitResult.status || 'PENDING_ADMIN'}`}
                   />
+                  {submitResult.is_duplicate_flag ? (
+                    <StatusBanner
+                      tone="warning"
+                      text={submitResult.duplicate_reason || 'พบรายการซ้ำตามกฎ Receipt No. + Date + Amount'}
+                    />
+                  ) : null}
                   <div className="card" style={{ backgroundColor: 'white', borderRadius: '20px', padding: '24px' }}>
                     <h2 style={{ fontSize: '22px', marginBottom: '16px' }}>Submission Summary</h2>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
@@ -580,6 +621,9 @@ const InputPage = () => {
                       <div><strong>Project:</strong> {submitResult.project_name}</div>
                       <div><strong>Type:</strong> {formatEntryTypeLabel(submitResult.entry_type)}</div>
                       <div><strong>Requester:</strong> {submitResult.requester_name}</div>
+                      <div><strong>Vendor:</strong> {submitResult.vendor_name || '-'}</div>
+                      <div><strong>Receipt No:</strong> {submitResult.receipt_no || '-'}</div>
+                      <div><strong>Document Date:</strong> {submitResult.document_date || '-'}</div>
                       <div><strong>Amount:</strong> {Number(submitResult.amount || 0).toLocaleString()} THB</div>
                       <div><strong>Status:</strong> {submitResult.status}</div>
                     </div>
@@ -601,6 +645,7 @@ const InputPage = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
                       <div><strong>File:</strong> {extractData.file_name}</div>
                       <div><strong>Vendor:</strong> {extractData.vendor_name || '-'}</div>
+                      <div><strong>Receipt No:</strong> {extractData.receipt_no || '-'}</div>
                       <div><strong>Date:</strong> {extractData.document_date || '-'}</div>
                       <div><strong>Suggested:</strong> {extractData.suggested_request_type || '-'}</div>
                       <div><strong>Total:</strong> {Number(extractData.total_amount || 0).toLocaleString()} THB</div>
